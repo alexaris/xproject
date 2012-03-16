@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-'''il2console test'''
+"""An atempt to write a line-oriented tool program for IL2Sturmovik.
+
+"""
 
 import sys
 from PySide import QtGui  
@@ -19,14 +21,67 @@ def evalute(text):
     else: 
         return 'unknown command'
 
+import string
+class CLInterpreter:
+    """A simple class for writing line-oriented command interpreters.
+
+    """
+    prompt = '> '
+    identchars = string.ascii_letters + string.digits + '_'
+    
+    def __init__(self):
+        pass
+
+    def parseline(self, line):
+        """Parse the line into a command name and arguments.
+        Returns a tuple containing (command, args).
+
+        """
+        line = line.strip()
+        if not line:
+            return None, None
+        i, n = 0, len(line)
+        while i < n and line[i] in self.identchars: i += 1
+        cmd, arg = line[:i], line[i:].strip()
+        return cmd, arg #, line
+
+    def onecommand(self, line):
+        """Interpret the command.
+
+        """
+        cmd, arg = self.parseline(line)
+        if not line:
+            return ''
+        if cmd is None:
+            return ''
+        if cmd == '':
+            return ''
+        else: 
+            try:
+                func = getattr(self, 'do_' + cmd)
+            except AttributeError:
+                return ''
+            return func(arg)
+
+
+class MyCLI(CLInterpreter):
+    def __init__(self):
+        CLInterpreter.__init__(self)
+        self.prompt = '> '
+
+    def do_hello(self, arg):
+        return 'hi %s!' % arg
+
+
 class Console(QtGui.QTextEdit):
     def __init__(self, parent=None):
         super(Console, self).__init__(parent)
-        
-        self.prompt = '> '
+        self.cli = MyCLI()
+
+        self.prompt = self.cli.prompt
         self.lastcontent = ''
         self.lastblock = ''
-        self.counter = 0
+        self.cursorPosition = 0
         
         self.viewport().setCursor(QtCore.Qt.ArrowCursor)
         self.setCursorWidth(6)
@@ -35,20 +90,21 @@ class Console(QtGui.QTextEdit):
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Backspace:
-            if self.counter > 0: 
+            if self.cursorPosition > 0: 
                 QtGui.QTextEdit.keyPressEvent(self, event)
-                self.counter -= 1
-                print self.counter
+                self.cursorPosition -= 1
+                print self.cursorPosition
 
         elif event.key() == QtCore.Qt.Key_Return:
             content = self.toPlainText()
             self.lastblock = content.replace(self.lastcontent, '')
             s = self.lastblock[len(self.prompt):].strip()
-            t =  evalute(s)
+            #t =  evalute(s)
+            t = self.cli.onecommand(s)
             if t != '': self.append(t)
             self.lastcontent = self.toPlainText()
             self.append(self.prompt)
-            self.counter = 0
+            self.cursorPosition = 0
         elif (event.key() == QtCore.Qt.Key_Up or
               event.key() == QtCore.Qt.Key_Down or
               event.key() == QtCore.Qt.Key_Left or
@@ -57,8 +113,8 @@ class Console(QtGui.QTextEdit):
 
         else:
             QtGui.QTextEdit.keyPressEvent(self, event)
-            self.counter += 1
-            print self.counter
+            self.cursorPosition += 1
+            print self.cursorPosition
        
     def mousePressEvent(self, event):
         event.ignore()
