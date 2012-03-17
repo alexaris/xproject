@@ -9,18 +9,6 @@ import sys
 from PySide import QtGui  
 from PySide import QtCore
 
-def evalute(text):
-    print list(text)
-    if 'hello' in text:
-        return 'hi!'
-    if 'list' in text:
-        return u'петя\nвася'
-    if 'help' in text:
-        return u'sorry, there is no help'
-    if text == '': return ''
-    else: 
-        return 'unknown command'
-
 import string
 class CLInterpreter:
     """A simple class for writing line-oriented command interpreters.
@@ -43,7 +31,7 @@ class CLInterpreter:
         i, n = 0, len(line)
         while i < n and line[i] in self.identchars: i += 1
         cmd, arg = line[:i], line[i:].strip()
-        return cmd, arg #, line
+        return cmd, arg
 
     def onecommand(self, line):
         """Interpret the command.
@@ -63,19 +51,47 @@ class CLInterpreter:
                 return ''
             return func(arg)
 
+    def do_help(self, arg):
+        if arg:
+            try:
+                func = getattr(self, 'help_' + arg)
+            except AttributeError:
+                try:
+                    doc = getattr(self, 'do_' + arg).__doc__
+                    if doc:
+                        return '%s' % str(doc)
+                except AttributeError:
+                    pass
+                return 'there is no help for %s' % arg
+            func()
 
 class MyCLI(CLInterpreter):
+    
     def __init__(self):
         CLInterpreter.__init__(self)
         self.prompt = '> '
 
     def do_hello(self, arg):
-        return 'hi %s!' % arg
+        """Greeting message.
+        """
+        if arg: arg = ' ' +  arg
+        return 'hi%s!' % arg
 
+    def do_stat(self, arg):
+        return 'Tom: 12%\nJohn: 0.31%'
 
 class Console(QtGui.QTextEdit):
+    validchars = xrange(0x20, 0xFF)
+    stylesheet = '''QTextEdit{color:rgb(40, 200, 70); 
+                    background-color:rgb(10, 10, 10)}'''
     def __init__(self, parent=None):
         super(Console, self).__init__(parent)
+
+        self.setCursorWidth(6)
+        self.setStyleSheet(self.stylesheet);
+        font = QtGui.QFont('Consolas', 11, QtGui.QFont.Bold)
+        self.setFont(font)
+
         self.cli = MyCLI()
 
         self.prompt = self.cli.prompt
@@ -84,8 +100,6 @@ class Console(QtGui.QTextEdit):
         self.cursorPosition = 0
         
         self.viewport().setCursor(QtCore.Qt.ArrowCursor)
-        self.setCursorWidth(6)
-
         self.append(self.prompt)
 
     def keyPressEvent(self, event):
@@ -93,29 +107,22 @@ class Console(QtGui.QTextEdit):
             if self.cursorPosition > 0: 
                 QtGui.QTextEdit.keyPressEvent(self, event)
                 self.cursorPosition -= 1
-                print self.cursorPosition
-
         elif event.key() == QtCore.Qt.Key_Return:
             content = self.toPlainText()
             self.lastblock = content.replace(self.lastcontent, '')
             s = self.lastblock[len(self.prompt):].strip()
-            #t =  evalute(s)
             t = self.cli.onecommand(s)
             if t != '': self.append(t)
             self.lastcontent = self.toPlainText()
             self.append(self.prompt)
             self.cursorPosition = 0
-        elif (event.key() == QtCore.Qt.Key_Up or
-              event.key() == QtCore.Qt.Key_Down or
-              event.key() == QtCore.Qt.Key_Left or
-              event.key() == QtCore.Qt.Key_Right):
-            event.ignore()
-
-        else:
+        
+        elif event.key() in self.validchars:
             QtGui.QTextEdit.keyPressEvent(self, event)
             self.cursorPosition += 1
-            print self.cursorPosition
-       
+        else: 
+            event.ignore()
+    
     def mousePressEvent(self, event):
         event.ignore()
 
@@ -125,10 +132,12 @@ class MainWindow(QtGui.QWidget):
         self.init_ui()
         
     def init_ui(self):
-        self.edit = Console(self)
+        self.textEdit = Console(self)
         self.layout = QtGui.QGridLayout(self)
-        self.layout.addWidget(self.edit)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(self.textEdit)
         self.setWindowTitle('il2console')  
+        self.resize(600, 300)
                 
 def main():
     app = QtGui.QApplication(sys.argv)
