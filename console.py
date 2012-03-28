@@ -10,10 +10,10 @@ class Console(QtGui.QTextEdit):
                     background-color:rgb(10, 10, 10)}'''
     def __init__(self, parent=None):
         super(Console, self).__init__(parent)
-
+        self.parent = parent
         self.setCursorWidth(6)
         self.setStyleSheet(self.stylesheet);
-        font = QtGui.QFont('Consolas', 11, QtGui.QFont.Bold)
+        font = QtGui.QFont('Consolas', 11, QtGui.QFont.Normal)
         self.setFont(font)
 
         self.cli = mycli.MyCLI()
@@ -36,6 +36,7 @@ class Console(QtGui.QTextEdit):
             self.lastblock = content.replace(self.lastcontent, '')
             s = self.lastblock[len(self.prompt):].strip()
             t = self.cli.onecommand(s)
+            if t == '!exit': QtCore.QCoreApplication.quit()
             if t != '': self.append(t)
             self.lastcontent = self.toPlainText()
             self.append(self.prompt)
